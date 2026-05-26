@@ -1,3 +1,0 @@
-﻿<Configuration name="Notificaties">
-    <Include ref="CreateNotificatie.xml"/>
-</Configuration>

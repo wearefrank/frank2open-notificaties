@@ -1,3 +1,0 @@
-﻿<Configuration name="Auth">
-    <Include ref="AuthCheck.xml"/>
-</Configuration>

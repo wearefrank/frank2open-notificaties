@@ -1,4 +1,0 @@
-﻿<Configuration name="Database">
-    <Include ref="KanaalFixtures.xml"/>
-    <Include ref="AbonnementFixtures.xml"/>
-</Configuration>
