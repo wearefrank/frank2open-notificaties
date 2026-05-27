@@ -1,0 +1,99 @@
+// Parses JsonInputValidator's failureReason into a ZGW-standard invalidParams array.
+//
+// Input format (failureReason param):
+//   [/pointer: message, /pointer: message, : required property 'X' not found]
+//
+// Output: [{name, code, reason}, ...]
+
+local rawReason = if failureReason == null then "" else failureReason;
+
+// Strip outer [ ] and split on comma.
+// Entries are ", "-separated so every element after the first has a leading space.
+local raw =
+    if std.length(rawReason) >= 2
+    then std.substr(rawReason, 1, std.length(rawReason) - 2)
+    else rawReason;
+
+// In DataSonnet, s[i] returns a single-character string, not a code point integer.
+local trimLeading(s) =
+    if std.length(s) > 0 && s[0] == " "
+    then std.substr(s, 1, std.length(s) - 1)
+    else s;
+
+local entries = std.filter(
+    function(e) std.length(e) > 0,
+    [trimLeading(p) for p in std.split(raw, ",")]
+);
+
+// Convert JSON Pointer (/kanalen/0/naam) to friendly name (kanalen[0].naam).
+local isDigit(c) = c >= "0" && c <= "9";
+local isNumeric(s) =
+    std.length(s) > 0 &&
+    std.length(std.filter(
+        function(i) !isDigit(s[i]),
+        std.range(0, std.length(s) - 1)
+    )) == 0;
+
+local pointerToName(pointer) =
+    local parts = std.filter(
+        function(p) std.length(p) > 0,
+        std.split(pointer, "/")
+    );
+    std.foldl(
+        function(acc, part)
+            if isNumeric(part) then acc + "[" + part + "]"
+            else if std.length(acc) == 0 then part
+            else acc + "." + part,
+        parts,
+        ""
+    );
+
+// Derive a short error code from the message text.
+local classify(msg) =
+    local lower = std.asciiLower(msg);
+    if std.length(std.findSubstr("required property", lower)) > 0 then "required"
+    else if std.length(std.findSubstr("uri", lower)) > 0 then "bad-url"
+    else if std.length(std.findSubstr("minimum length", lower)) > 0
+            || std.length(std.findSubstr("too short", lower)) > 0 then "too-short"
+    else if std.length(std.findSubstr("maximum length", lower)) > 0
+            || std.length(std.findSubstr("too long", lower)) > 0 then "too-long"
+    else if std.length(std.findSubstr("additional", lower)) > 0 then "additional"
+    else "invalid";
+
+local reasonText(code) =
+    if code == "required" then "This field is required."
+    else if code == "bad-url" then "Must be a valid URL."
+    else if code == "too-short" then "Value is too short."
+    else if code == "too-long" then "Value is too long."
+    else if code == "additional" then "Additional properties are not allowed."
+    else "Invalid value.";
+
+// Extract field name from "required property 'X' not found".
+local extractRequiredField(msg) =
+    local after1 = std.splitLimit(msg, "'", 1);
+    if std.length(after1) == 2 then
+        local inner = std.splitLimit(after1[1], "'", 1);
+        if std.length(inner) == 2 then inner[0] else ""
+    else "";
+
+local parseEntry(entry) =
+    local parts   = std.splitLimit(entry, ":", 1);
+    local hasSep  = std.length(parts) == 2;
+    local pointer = if hasSep then parts[0] else "";
+    local rawMsg  = if hasSep then parts[1] else entry;
+    local msg     = if std.length(rawMsg) > 0 && rawMsg[0] == " "
+                    then std.substr(rawMsg, 1, std.length(rawMsg) - 1)
+                    else rawMsg;
+    local code     = classify(msg);
+    local baseName = pointerToName(pointer);
+    local reqField = if code == "required" then extractRequiredField(msg) else "";
+    local name     =
+        if code == "required" && std.length(reqField) > 0 then
+            if std.length(baseName) > 0 then baseName + "." + reqField else reqField
+        else if std.length(baseName) > 0 then baseName
+        else "body";
+    { name: name, code: code, reason: reasonText(code) };
+
+local result = [parseEntry(e) for e in entries];
+if std.length(result) > 0 then result
+else [{ name: "body", code: "invalid", reason: "Invalid input." }]

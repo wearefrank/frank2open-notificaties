@@ -1,0 +1,8 @@
+local row = payload.rowset[0];
+
+{
+    url: baseUrl + row.UUID,
+    naam: row.NAAM,
+    documentatieLink: row.DOCUMENTATIE_LINK,
+    filters: std.parseJson(row.FILTERS)
+}

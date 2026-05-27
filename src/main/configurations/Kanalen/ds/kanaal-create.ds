@@ -1,0 +1,6 @@
+{
+  url: baseUrl + uuid,
+  naam: payload.naam,
+  documentatieLink: payload.documentatieLink,
+  filters: payload.filters,
+}

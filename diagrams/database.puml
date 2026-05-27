@@ -1,0 +1,71 @@
+@startuml
+title Database Schema
+
+skinparam linetype ortho
+skinparam roundcorner 5
+skinparam class {
+    BackgroundColor White
+    BorderColor #444
+    HeaderBackgroundColor #1a5276
+    HeaderFontColor White
+    FontSize 12
+}
+
+entity "kanaal" as kanaal {
+    * id : BIGSERIAL <<PK>>
+    --
+    * uuid : VARCHAR(50) <<unique>>
+    * naam : VARCHAR(50) <<unique>>
+    documentatie_link : VARCHAR(1000)
+    * filters : TEXT
+}
+
+entity "abonnement" as abonnement {
+    * id : BIGSERIAL <<PK>>
+    --
+    * uuid : VARCHAR(50) <<unique>>
+    * callback_url : VARCHAR(1000)
+    * auth : VARCHAR(1000)
+}
+
+entity "filter_group" as filter_group {
+    * id : BIGSERIAL <<PK>>
+    --
+    * abonnement_id : BIGINT <<FK>>
+    * kanaal_id : BIGINT <<FK>>
+}
+
+entity "filter" as filter {
+    * id : BIGSERIAL <<PK>>
+    --
+    * filter_group_id : BIGINT <<FK>>
+    * key : VARCHAR(100)
+    * value : VARCHAR(1000)
+}
+
+entity "notificatie" as notificatie {
+    * id : BIGSERIAL <<PK>>
+    --
+    * kanaal_id : BIGINT <<FK>>
+    * forwarded_msg : JSON
+}
+
+entity "notificatie_response" as notificatie_response {
+    * id : BIGSERIAL <<PK>>
+    --
+    * notificatie_id : BIGINT <<FK>>
+    * abonnement_id : BIGINT <<FK>>
+    * attempt : SMALLINT
+    response_status : INTEGER
+    * exception : VARCHAR(1000)
+}
+
+' Relationships
+abonnement ||--o{ filter_group : "subscribes via"
+kanaal ||--o{ filter_group : "subscribed to by"
+filter_group ||--o{ filter : "has"
+kanaal ||--o{ notificatie : "published on"
+notificatie ||--o{ notificatie_response : "delivered to"
+abonnement ||--o{ notificatie_response : "receives"
+
+@enduml

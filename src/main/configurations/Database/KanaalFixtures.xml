@@ -1,0 +1,54 @@
+<Module
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="../FrankConfig.xsd"
+>
+    <!-- Test fixture: deletes all kanaal rows (cascades to filter_group and notificatie),
+         then inserts one known record used by Larva scenarios. -->
+    <Adapter name="setupKanaalTest">
+        <Receiver name="setupKanaalTestReceiver">
+            <FrankListener/>
+        </Receiver>
+        <Pipeline>
+            <Exits>
+                <Exit name="OK" state="SUCCESS"/>
+            </Exits>
+
+            <SenderPipe name="deleteAllKanaalRows">
+                <FixedQuerySender
+                        queryType="OTHER"
+                        query="DELETE FROM kanaal"/>
+                <Forward name="success" path="insertTestKanaal"/>
+            </SenderPipe>
+
+            <SenderPipe name="insertTestKanaal">
+                <FixedQuerySender
+                        queryType="OTHER"
+                        query="INSERT INTO kanaal (uuid, naam, documentatie_link, filters) VALUES (?, ?, ?, ?)"/>
+                <Param name="uuid"             value="test-kanaal-uuid-001"/>
+                <Param name="naam"             value="test-kanaal"/>
+                <Param name="documentatie_link" value="http://example.com/docs/test-kanaal"/>
+                <Param name="filters"          value='["zaaktype","bronorganisatie"]'/>
+                <Forward name="success" path="OK"/>
+            </SenderPipe>
+        </Pipeline>
+    </Adapter>
+
+    <!-- Test fixture: deletes all kanaal rows (cascades to filter_group and notificatie). -->
+    <Adapter name="deleteAllKanaal">
+        <Receiver name="deleteAllKanaalReceiver">
+            <FrankListener/>
+        </Receiver>
+        <Pipeline>
+            <Exits>
+                <Exit name="OK" state="SUCCESS"/>
+            </Exits>
+
+            <SenderPipe name="deleteAllKanaalRows">
+                <FixedQuerySender
+                        queryType="OTHER"
+                        query="DELETE FROM kanaal"/>
+                <Forward name="success" path="OK"/>
+            </SenderPipe>
+        </Pipeline>
+    </Adapter>
+</Module>

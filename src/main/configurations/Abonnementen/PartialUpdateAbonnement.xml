@@ -1,0 +1,299 @@
+<Module
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="../FrankConfig.xsd"
+>
+    <Adapter name="partialUpdateAbonnementAdapter">
+        <Receiver name="partialUpdateAbonnementReceiver">
+            <ApiListener
+                    name="partialUpdateAbonnementListener"
+                    uriPattern="v1/abonnement/{uuid}"
+                    method="PATCH"
+                    headerParams="Authorization"
+                    allowAllParams="false"
+                    consumes="JSON"
+                    produces="JSON"/>
+        </Receiver>
+        <Pipeline>
+            <JsonInputValidator name="validateUpdateAbonnementInput"
+                                schema="json/partial-update-abonnement-schema.json">
+                <Forward name="success" path="setInstance"/>
+                <Forward name="failure" path="buildValidationInvalidParams"/>
+            </JsonInputValidator>
+            
+            <Exits>
+                <Exit name="OK" state="SUCCESS" code="200"/>
+                <Exit name="BadRequest" state="ERROR" code="400"/>
+                <Exit name="Unauthorized" state="ERROR" code="401"/>
+                <Exit name="Forbidden" state="ERROR" code="403"/>
+                <Exit name="NotFound" state="ERROR" code="404"/>
+                <Exit name="NotAcceptable" state="ERROR" code="406"/>
+                <Exit name="Conflict" state="ERROR" code="409"/>
+                <Exit name="Gone" state="ERROR" code="410"/>
+                <Exit name="PreconditionFailed" state="ERROR" code="412"/>
+                <Exit name="UnsupportedMediaType" state="ERROR" code="415"/>
+                <Exit name="TooManyRequests" state="ERROR" code="429"/>
+                <Exit name="InternalServerError" state="ERROR" code="500"/>
+            </Exits>
+
+            <PutInSessionPipe name="setInstance" value="abonnement" sessionKey="responseInstance">
+                <Forward name="success" path="checkAuth"/>
+            </PutInSessionPipe>
+
+            <SenderPipe name="checkAuth">
+                <FrankSender target="Auth/authCheck"/>
+                <Param name="authorization"
+                       sessionKey="headers"
+                       xpathExpression="headers/header[@name='Authorization']"/>
+                <Param name="requiredScopes" value='["notifcaties.consumeren"]'/>
+            </SenderPipe>
+
+            <SwitchPipe name="authResult">
+                <Forward name="200" path="checkAbonnementExists"/>
+                <Forward name="401" path="unauthorizedError"/>
+                <Forward name="403" path="forbiddenError"/>
+                <Forward name="500" path="exception"/>
+            </SwitchPipe>
+
+            <Include ref="CommonResponses.xml"/>
+
+            <!-- Check if abonnement exists and fetch the current data for merging -->
+            <SenderPipe name="checkAbonnementExists"
+                        storeResultInSessionKey="existingAbonnement">
+                <FixedQuerySender
+                        queryType="SELECT"
+                        query="
+                            SELECT
+                                abonnement.uuid,
+                                abonnement.callback_url,
+                                abonnement.auth,
+                                fg.id AS filter_group_id,
+                                kanaal.naam AS kanaal_naam,
+                                f.filter_key AS filter_key,
+                                f.filter_value AS filter_value
+                            FROM abonnement
+                            LEFT JOIN filter_group AS fg ON fg.abonnement_id = abonnement.id
+                            LEFT JOIN kanaal ON fg.kanaal_id = kanaal.id
+                            LEFT JOIN filter AS f ON f.filter_group_id = fg.id
+                            WHERE abonnement.uuid = ?
+                        "
+                        outputFormat="JSON"/>
+                <Param name="uuid" sessionKey="uuid"/>
+            </SenderPipe>
+
+            <IfPipe name="abonnementExistsCheck"
+                    expressionValue="0"
+                    jsonPathExpression="$.rowset.length()">
+                <Forward name="then" path="notFoundError"/>
+                <Forward name="else" path="combineMergeJson"/>
+            </IfPipe>
+
+            <!--
+                Merge the patch body (originalMessage) with the existing abonnement.
+                Only fields present in the patch body overwrite the existing value.
+                The result becomes the new complete object, stored back as originalMessage.
+            -->
+            <ReplacerPipe name="combineMergeJson"
+                          getInputFromSessionKey="originalMessage"
+                          getInputFromFixedValue='{"originalMessage":?{originalMessage},"existingAbonnement":?{existingAbonnement}}'>
+                <Param name="originalMessage" sessionKey="originalMessage"/>
+                <Param name="existingAbonnement" sessionKey="existingAbonnement" jsonPathExpression="$.rowset"/>
+                <Forward name="success" path="patchMerge"/>
+            </ReplacerPipe>
+
+            <DataSonnetPipe name="patchMerge"
+                            styleSheetName="ds/abonnement-patch-merge.ds"
+                            storeResultInSessionKey="originalMessage">
+                <Forward name="success" path="abonnementJsonConverter"/>
+            </DataSonnetPipe>
+
+            <JsonPipe name="abonnementJsonConverter"
+                      getInputFromSessionKey="originalMessage"
+                      storeResultInSessionKey="originalMessageXml">
+                <Forward name="success" path="checkKanalenNamesExists"/>
+            </JsonPipe>
+
+            <!-- Check if all requested kanalen exist -->
+            <ForEachChildElementPipe name="checkKanalenNamesExists" targetElement="naam">
+                <FixedQuerySender query="SELECT COUNT(*) AS count FROM kanaal WHERE naam = ?"
+                                  queryType="SELECT"
+                                  outputFormat="XML"/>
+                <Param name="naam" xpathExpression="naam"/>
+            </ForEachChildElementPipe>
+
+            <SwitchPipe name="checkKanalenNamesExistsCheck"
+                        xpathExpression="//row/COUNT=0">
+                <Forward name="false" path="checkWebhookExists"/>
+                <Forward name="true" path="setKanalenNotFoundParams"/>
+            </SwitchPipe>
+
+            <PutInSessionPipe name="setKanalenNotFoundParams"
+                              value='[{"name": "kanalen", "code": "does_not_exist", "reason": "One or more kanaal names do not exist."}]'
+                              sessionKey="invalidParams">
+                <Forward name="success" path="badRequestError"/>
+            </PutInSessionPipe>
+
+            <SenderPipe name="checkWebhookExists"
+                        getInputFromFixedValue='{
+                          "kanaal": "test",
+                          "hoofdObject": "http://some.hoofdobject.nl/",
+                          "resource": "some_resource",
+                          "resourceUrl": "http://some.resource.nl/",
+                          "actie": "create",
+                          "aanmaakdatum": "2019-01-01T12:00:00Z",
+                          "kenmerken": {}
+                        }'>
+                <HttpSender
+                        name="checkWebhookHttpSender"
+                        methodType="POST"
+                        headersParams="Authorization,content-type"/>
+                <Param name="url" sessionKey="originalMessage" jsonPathExpression="$.callbackUrl"/>
+                <Param name="Authorization" sessionKey="originalMessage" jsonPathExpression="$.auth"/>
+                <Param name="content-type" value="application/json"/>
+
+                <Forward name="200" path="checkDuplicateSubscription"/>
+                <Forward name="201" path="checkDuplicateSubscription"/>
+                <Forward name="202" path="checkDuplicateSubscription"/>
+                <Forward name="203" path="checkDuplicateSubscription"/>
+                <Forward name="204" path="checkDuplicateSubscription"/>
+                <Forward name="205" path="checkDuplicateSubscription"/>
+                <Forward name="206" path="checkDuplicateSubscription"/>
+                <Forward name="207" path="checkDuplicateSubscription"/>
+                <Forward name="208" path="checkDuplicateSubscription"/>
+                <Forward name="226" path="checkDuplicateSubscription"/>
+
+                <Forward name="400" path="setCallbackUrlInvalidParams"/>
+                <Forward name="401" path="setCallbackUrlInvalidParams"/>
+                <Forward name="402" path="setCallbackUrlInvalidParams"/>
+                <Forward name="403" path="setCallbackUrlInvalidParams"/>
+                <Forward name="404" path="setCallbackUrlInvalidParams"/>
+                <Forward name="405" path="setCallbackUrlInvalidParams"/>
+                <Forward name="406" path="setCallbackUrlInvalidParams"/>
+                <Forward name="407" path="setCallbackUrlInvalidParams"/>
+                <Forward name="408" path="setCallbackUrlInvalidParams"/>
+                <Forward name="409" path="setCallbackUrlInvalidParams"/>
+                <Forward name="410" path="setCallbackUrlInvalidParams"/>
+                <Forward name="411" path="setCallbackUrlInvalidParams"/>
+                <Forward name="412" path="setCallbackUrlInvalidParams"/>
+                <Forward name="413" path="setCallbackUrlInvalidParams"/>
+                <Forward name="414" path="setCallbackUrlInvalidParams"/>
+                <Forward name="415" path="setCallbackUrlInvalidParams"/>
+                <Forward name="416" path="setCallbackUrlInvalidParams"/>
+                <Forward name="417" path="setCallbackUrlInvalidParams"/>
+                <Forward name="418" path="setCallbackUrlInvalidParams"/>
+                <Forward name="421" path="setCallbackUrlInvalidParams"/>
+                <Forward name="422" path="setCallbackUrlInvalidParams"/>
+                <Forward name="423" path="setCallbackUrlInvalidParams"/>
+                <Forward name="424" path="setCallbackUrlInvalidParams"/>
+                <Forward name="425" path="setCallbackUrlInvalidParams"/>
+                <Forward name="426" path="setCallbackUrlInvalidParams"/>
+                <Forward name="428" path="setCallbackUrlInvalidParams"/>
+                <Forward name="429" path="setCallbackUrlInvalidParams"/>
+                <Forward name="431" path="setCallbackUrlInvalidParams"/>
+                <Forward name="451" path="setCallbackUrlInvalidParams"/>
+                <Forward name="500" path="setCallbackUrlInvalidParams"/>
+                <Forward name="501" path="setCallbackUrlInvalidParams"/>
+                <Forward name="502" path="setCallbackUrlInvalidParams"/>
+                <Forward name="503" path="setCallbackUrlInvalidParams"/>
+                <Forward name="504" path="setCallbackUrlInvalidParams"/>
+                <Forward name="505" path="setCallbackUrlInvalidParams"/>
+                <Forward name="506" path="setCallbackUrlInvalidParams"/>
+                <Forward name="507" path="setCallbackUrlInvalidParams"/>
+                <Forward name="508" path="setCallbackUrlInvalidParams"/>
+                <Forward name="510" path="setCallbackUrlInvalidParams"/>
+                <Forward name="511" path="setCallbackUrlInvalidParams"/>
+
+                <!-- add something for exceptions (host not allowed/recognized) -->
+
+                <!-- Fallback for when HttpSender is replaced by IbisJavaSender in stub4testtool mode -->
+                <Forward name="success" path="checkDuplicateSubscription"/>
+            </SenderPipe>
+
+            <PutInSessionPipe name="setCallbackUrlInvalidParams"
+                              value='[{"name": "callbackUrl", "code": "invalid", "reason": "The callback URL did not respond with a success status."}]'
+                              sessionKey="invalidParams">
+                <Forward name="success" path="badRequestError"/>
+            </PutInSessionPipe>
+
+            <ForEachChildElementPipe name="checkDuplicateSubscription"
+                                     targetElement="naam"
+                                     getInputFromSessionKey="originalMessageXml">
+                <FixedQuerySender
+                        query="SELECT COUNT(*) AS count FROM abonnement a
+                   INNER JOIN filter_group fg ON a.id = fg.abonnement_id
+                   INNER JOIN kanaal k        ON fg.kanaal_id = k.id
+                   WHERE a.callback_url = ? AND k.naam = ? AND a.uuid != ?"
+                        queryType="SELECT"
+                        outputFormat="XML"/>
+                <Param name="callback_url" sessionKey="originalMessage" jsonPathExpression="$.callbackUrl"/>
+                <Param name="naam" xpathExpression="naam"/>
+                <Param name="uuid" sessionKey="uuid"/>
+            </ForEachChildElementPipe>
+
+            <SwitchPipe name="duplicateSubscriptionCheck"
+                        xpathExpression="count(//row/COUNT[not(contains(text(), '0'))])=0">
+                <Forward name="false" path="conflictError"/>
+                <Forward name="true" path="updateAbonnementSender"/>
+            </SwitchPipe>
+
+            <SenderPipe name="updateAbonnementSender">
+                <FixedQuerySender
+                        query="UPDATE abonnement SET callback_url = ?, auth = ? WHERE uuid = ?"
+                        queryType="OTHER"/>
+                <Param name="callback_url" sessionKey="originalMessage" jsonPathExpression="$.callbackUrl"/>
+                <Param name="auth" sessionKey="originalMessage" jsonPathExpression="$.auth"/>
+                <Param name="uuid" sessionKey="uuid"/>
+            </SenderPipe>
+
+            <SenderPipe name="fetchAbonnementId"
+                        storeResultInSessionKey="abonnementId">
+                <FixedQuerySender
+                        queryType="SELECT"
+                        query="SELECT id FROM abonnement WHERE uuid = ?"
+                        outputFormat="XML"/>
+                <Param name="uuid" sessionKey="uuid"/>
+            </SenderPipe>
+
+            <SenderPipe name="deleteOldFilterGroups">
+                <FixedQuerySender
+                        query="DELETE FROM filter_group WHERE abonnement_id = ?"
+                        queryType="OTHER"/>
+                <Param name="abonnement_id" sessionKey="abonnementId" xpathExpression="//ID"/>
+            </SenderPipe>
+            <ForEachChildElementPipe name="insertKanalenLoop"
+                                     elementXPathExpression="//kanalen"
+                                     getInputFromSessionKey="originalMessageXml">
+                <FrankSender target="insertKanaalWithFilters"/>
+                <Param name="abonnementId" sessionKey="abonnementId"/>
+            </ForEachChildElementPipe>
+
+            <SenderPipe name="readUpdatedAbonnement">
+                <FixedQuerySender
+                        queryType="SELECT"
+                        query="
+                            SELECT
+                                abonnement.uuid,
+                                abonnement.callback_url,
+                                abonnement.auth,
+                                fg.id AS filter_group_id,
+                                kanaal.naam AS kanaal_naam,
+                                f.filter_key AS filter_key,
+                                f.filter_value AS filter_value
+                            FROM abonnement
+                            LEFT JOIN filter_group AS fg ON fg.abonnement_id = abonnement.id
+                            LEFT JOIN kanaal ON fg.kanaal_id = kanaal.id
+                            LEFT JOIN filter AS f ON f.filter_group_id = fg.id
+                            WHERE abonnement.uuid = ?
+                        "
+                        outputFormat="JSON"/>
+                <Param name="uuid" sessionKey="uuid"/>
+            </SenderPipe>
+
+            <DataSonnetPipe
+                    name="patchAbonnementMap"
+                    styleSheetName="ds/abonnement-read.ds">
+                <Param name="baseUrl" value="${nc.api.base-url}/abonnement/"/>
+                <Forward name="success" path="OK"/>
+            </DataSonnetPipe>
+        </Pipeline>
+    </Adapter>
+</Module>

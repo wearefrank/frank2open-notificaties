@@ -1,0 +1,11 @@
+[
+  {
+    "url": "http://localhost:8080/api/v1/kanaal/test-kanaal-uuid-001",
+    "naam": "test-kanaal",
+    "documentatieLink": "http://example.com/docs/test-kanaal",
+    "filters": [
+      "zaaktype",
+      "bronorganisatie"
+    ]
+  }
+]

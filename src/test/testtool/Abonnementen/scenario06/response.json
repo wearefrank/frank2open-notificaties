@@ -1,0 +1,8 @@
+﻿{
+  "type": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/409 409 Conflict",
+  "code": "unique",
+  "title": "Subscription already exists.",
+  "status": 409,
+  "detail": "A subscription with this callbackUrl already exists for one or more of the requested kanalen.",
+  "instance": "abonnement"
+}

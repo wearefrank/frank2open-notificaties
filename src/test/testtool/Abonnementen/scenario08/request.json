@@ -1,0 +1,5 @@
+﻿{
+  "callbackUrl": "http://example.com/updated-webhook",
+  "auth": "Bearer updated-token",
+  "kanalen": [{"naam": "test-kanaal", "filters": {}}]
+}

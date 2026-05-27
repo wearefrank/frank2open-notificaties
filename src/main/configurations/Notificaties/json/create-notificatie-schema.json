@@ -1,0 +1,54 @@
+﻿{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/schemas/open-notificatie-abonnement.json",
+  "title": "Open Notificatie Abonnement",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["kanaal", "hoofdObject", "resource", "resourceUrl", "actie", "aanmaakdatum"],
+  "properties": {
+    "kanaal": {
+      "type": "string",
+      "maxLength": 50,
+      "description": "De naam van het kanaal waar het bericht op moet worden gepubliceerd."
+    },
+    "source": {
+      "type": "string",
+      "maxLength": 100,
+      "description": "De identifier van de oorsprong van de notificatie (systeem of organisatie)."
+    },
+    "hoofdObject": {
+      "type": "string",
+      "format": "uri",
+      "description": "URL-referentie naar het hoofdobject van de publicerende API."
+    },
+    "resource": {
+      "type": "string",
+      "maxLength": 100,
+      "description": "De resourcenaam waar de notificatie over gaat."
+    },
+    "resourceUrl": {
+      "type": "string",
+      "format": "uri",
+      "description": "URL-referentie naar de specifieke resource."
+    },
+    "actie": {
+      "type": "string",
+      "maxLength": 100,
+      "description": "De actie die door de publicerende API is uitgevoerd."
+    },
+    "aanmaakdatum": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Datum en tijd waarop de actie heeft plaatsgevonden."
+    },
+    "kenmerken": {
+      "type": "object",
+      "description": "Mapping van extra kenmerken (sleutel/waarde paren).",
+      "additionalProperties": {
+        "type": "string",
+        "maxLength": 1000,
+        "description": "Een waarde behorende bij de sleutel."
+      }
+    }
+  }
+}

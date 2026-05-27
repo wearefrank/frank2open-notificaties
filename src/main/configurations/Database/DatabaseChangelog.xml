@@ -1,0 +1,208 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="
+           http://www.liquibase.org/xml/ns/dbchangelog
+           http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.15.xsd">
+
+    <!-- 1. KANAAL -->
+    <changeSet id="1-create-kanaal" author="Rik">
+        <createTable tableName="kanaal">
+            <column name="id" type="BIGSERIAL">
+                <constraints primaryKey="true"/>
+            </column>
+            <column name="uuid" type="VARCHAR(50)"> <!-- Type should be UUID but H2 handles it differently -->
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="naam" type="VARCHAR(50)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="documentatie_link" type="VARCHAR(1000)"/>
+            <column name="filters" type="TEXT" defaultValue="[]"> <!-- Type should be TEXT[] but H2 doesn't support it -->
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="created_at" type="TIMESTAMP WITH TIME ZONE" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <!-- 2. ABONNEMENT -->
+    <changeSet id="2-create-abonnement" author="Rik">
+        <createTable tableName="abonnement">
+            <column name="id" type="BIGSERIAL">
+                <constraints primaryKey="true"/>
+            </column>
+            <column name="uuid" type="VARCHAR(50)"> <!-- Type should be UUID but H2 handles it differently -->
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="callback_url" type="VARCHAR(1000)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="auth" type="VARCHAR(1000)">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="created_at" type="TIMESTAMP WITH TIME ZONE" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <!-- 3. FILTER_GROUP -->
+    <changeSet id="3-create-filter-group" author="Rik">
+        <createTable tableName="filter_group">
+            <column name="id" type="BIGSERIAL">
+                <constraints primaryKey="true"/>
+            </column>
+            <column name="abonnement_id" type="BIGINT">
+                <constraints
+                        nullable="false"
+                        foreignKeyName="fk_filter_group_abonnement"
+                        references="abonnement(id)"
+                        deleteCascade="true"/>
+            </column>
+            <column name="kanaal_id" type="BIGINT">
+                <constraints
+                        nullable="false"
+                        foreignKeyName="fk_filter_group_kanaal"
+                        references="kanaal(id)"
+                        deleteCascade="true"/>
+            </column>
+        </createTable>
+        <addUniqueConstraint
+                tableName="filter_group"
+                columnNames="abonnement_id, kanaal_id"
+                constraintName="uq_abonnement_kanaal"/>
+    </changeSet>
+
+    <!-- 4. FILTER -->
+    <changeSet id="4-create-filter" author="Rik">
+        <createTable tableName="filter">
+            <column name="id" type="BIGSERIAL">
+                <constraints primaryKey="true"/>
+            </column>
+            <column name="filter_group_id" type="BIGINT">
+                <constraints
+                        nullable="false"
+                        foreignKeyName="fk_filter_filter_group"
+                        references="filter_group(id)"
+                        deleteCascade="true"/>
+            </column>
+            <column name="filter_key" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="filter_value" type="VARCHAR(1000)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addUniqueConstraint
+                tableName="filter"
+                columnNames="filter_group_id, filter_key"
+                constraintName="uq_filter_group_key"/>
+    </changeSet>
+
+    <!-- 5. NOTIFICATIE -->
+    <changeSet id="5-create-notificatie" author="Rik">
+        <createTable tableName="notificatie">
+            <column name="id" type="BIGSERIAL">
+                <constraints primaryKey="true"/>
+            </column>
+            <column name="kanaal_id" type="BIGINT">
+                <constraints
+                        nullable="false"
+                        foreignKeyName="fk_notificatie_kanaal"
+                        references="kanaal(id)"
+                        deleteCascade="true"/>
+            </column>
+            <column name="forwarded_msg" type="JSON">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="created_at" type="TIMESTAMP WITH TIME ZONE" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <!-- 6. NOTIFICATIE_RESPONSE -->
+    <changeSet id="6-create-notificatie-response" author="Rik">
+        <createTable tableName="notificatie_response">
+            <column name="id" type="BIGSERIAL">
+                <constraints primaryKey="true"/>
+            </column>
+            <column name="notificatie_id" type="BIGINT">
+                <constraints
+                        nullable="false"
+                        foreignKeyName="fk_notificatie_response_notificatie"
+                        references="notificatie(id)"
+                        deleteCascade="true"/>
+            </column>
+            <column name="abonnement_id" type="BIGINT">
+                <constraints
+                        nullable="false"
+                        foreignKeyName="fk_notificatie_response_abonnement"
+                        references="abonnement(id)"
+                        deleteCascade="true"/>
+            </column>
+            <column name="attempt" type="SMALLINT" defaultValueNumeric="1">
+                <constraints nullable="false"/> <!-- Auto increment? -->
+            </column>
+            <column name="response_status" type="INTEGER"/>
+            <column name="exception" type="VARCHAR(1000)" defaultValue="">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="created_at" type="TIMESTAMP WITH TIME ZONE" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <!-- 7. JWT -->
+    <changeSet id="7-create-jwt-secret" author="Rik">
+        <createTable tableName="jwt_secret">
+            <column name="id" type="BIGSERIAL">
+                <constraints primaryKey="true"/>
+            </column>
+            <column name="client_id" type="VARCHAR(255)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="secret" type="VARCHAR(512)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="label" type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+
+    <!-- Got this from frankframework\core\src\main\resources\IAF_Util\IAF_DatabaseChangelog.xml -->
+    <changeSet id="8-create-ibisstore" author="Niels Meijer">
+        <validCheckSum>7:4a9c70190e4678c16c7d392b8ecff571</validCheckSum> <!-- #1481, BLOB->LONGBLOB -->
+        <comment>Add IBISSTORE Table</comment>
+        <createTable tableName="IBISSTORE">
+            <column name="MESSAGEKEY" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="PK_IBISSTORE"/>
+            </column>
+            <column name="TYPE" type="java.sql.Types.CHAR(1)"/>
+            <column name="SLOTID" type="java.sql.Types.VARCHAR(100)"/>
+            <column name="HOST" type="java.sql.Types.VARCHAR(100)"/>
+            <column name="MESSAGEID" type="java.sql.Types.VARCHAR(100)"/>
+            <column name="CORRELATIONID" type="java.sql.Types.VARCHAR(256)"/>
+            <column name="MESSAGEDATE" type="DATETIME"/>
+            <column name="COMMENTS" type="java.sql.Types.VARCHAR(1000)"/>
+            <column name="MESSAGE" type="LONGBLOB"/> <!-- LONGBLOB required for MySQL and MariaDB, compatible with BLOB for other dbmses -->
+            <column name="EXPIRYDATE" type="DATETIME"/>
+            <column name="LABEL" type="java.sql.Types.VARCHAR(100)"/>
+        </createTable>
+        <createIndex tableName="IBISSTORE" indexName="IX_IBISSTORE">
+            <column name="TYPE"/>
+            <column name="SLOTID"/>
+            <column name="MESSAGEDATE"/>
+        </createIndex>
+        <createIndex tableName="IBISSTORE" indexName="IX_IBISSTORE_02">
+            <column name="EXPIRYDATE"/>
+        </createIndex>
+    </changeSet>
+</databaseChangeLog>

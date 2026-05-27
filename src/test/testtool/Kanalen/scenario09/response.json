@@ -1,0 +1,8 @@
+{
+  "type": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/401 401 Unauthorized",
+  "code": "authentication_failed",
+  "title": "Authentication credentials were not provided or not correct.",
+  "status": 401,
+  "detail": "Authentication credentials were not provided or not correct.",
+  "instance": "kanaal"
+}

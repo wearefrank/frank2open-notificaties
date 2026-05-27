@@ -1,0 +1,50 @@
+info:
+  name: Create zaak
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: http://localhost:8001/zaken/api/v1/zaken
+  headers:
+    - name: Content-Crs
+      value: EPSG:4326
+    - name: Accept-Crs
+      value: EPSG:4326
+  body:
+    type: json
+    data: |-
+      {
+          "bronorganisatie": "000000000",
+          "omschrijving": "string",
+          "toelichting": "string",
+          "registratiedatum": "2019-04-09",
+          "verantwoordelijkeOrganisatie": "000000000",
+          "zaaktype": "http://localhost:8001/catalogi/api/v1/zaaktypen/59fa0613-b50d-41f1-8358-673909944686",
+          "startdatum": "2025-04-09",
+          "einddatumGepland": "2025-04-20",
+          "uiterlijkeEinddatumAfdoening": "2019-04-09",
+          "publicatiedatum": "2019-04-09",
+          "vertrouwelijkheidaanduiding": "openbaar",
+          "betalingsindicatie": "geheel",
+          "laatsteBetaalDatum": "2019-01-01",
+          "zaakgeometrie": {
+              "type": "Point",
+              "coordinates": [
+                  53,
+                  5
+              ]
+          },
+          "opschorting": {
+              "indicatie": true,
+              "reden": "string"
+          },
+          "archiefstatus": "nog_te_archiveren"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

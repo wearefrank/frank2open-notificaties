@@ -1,0 +1,9 @@
+[
+    {
+        url: baseUrl + row.UUID,
+        naam: row.NAAM,
+        documentatieLink: row.DOCUMENTATIE_LINK,
+        filters: std.parseJson(row.FILTERS)
+    }
+    for row in payload.rowset
+]

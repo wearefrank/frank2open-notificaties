@@ -1,0 +1,43 @@
+info:
+  name: Create
+  type: http
+  seq: 2
+
+http:
+  method: POST
+  url: "{{ROOT_URI}}/api/{{API_VERSION}}/abonnement"
+  body:
+    type: json
+    data: |-
+      {
+        "callbackUrl": "{{WEBHOOK_URL}}",
+        "auth": "Bearer test-token-runner",
+        "kanalen": [
+          {
+            "naam": "{{kanaal_naam}}",
+            "filters": {
+              "bronorganisatie": "000000001"
+            }
+          }
+        ]
+      }
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        if (res.status === 201) {
+          const uuid = res.body.url.split('/').pop();
+          bru.setVar("abonnement_uuid", uuid);
+        }
+  assertions:
+    - expression: res.status
+      operator: eq
+      value: "201"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

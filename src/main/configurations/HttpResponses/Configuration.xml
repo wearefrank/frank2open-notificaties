@@ -1,0 +1,4 @@
+﻿<Configuration name="HttpResponses">
+    <Include ref="BuildResponse.xml"/>
+</Configuration>
+

@@ -1,0 +1,44 @@
+﻿{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/schemas/open-notificatie-abonnement.json",
+  "title": "Open Notificatie Abonnement",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "callbackUrl": {
+      "type": "string",
+      "minLength": 1,
+      "format": "uri",
+      "description": "De URL waar notificaties naar toe gestuurd dienen te worden. Deze URL dient uit te komen bij een API die geschikt is om notificaties op te ontvangen."
+    },
+    "auth": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Autorisatie header invulling voor het vesturen naar de 'Callback URL'. Voorbeeld: Bearer a4daa31..."
+    },
+    "kanalen": {
+      "type": "array",
+      "description": "Een lijst van kanalen en filters waarop het ABONNEMENT wordt afgenomen.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["naam"],
+        "properties": {
+          "naam": {
+            "type": "string",
+            "minLength": 1,
+            "description": "De naam van het KANAAL (KANAAL.naam) waarop een abonnement is of wordt genomen."
+          },
+          "filters": {
+            "type": "object",
+            "description": "Map van kenmerken (sleutel/waarde) waarop notificaties gefilterd worden. Alleen notificaties waarvan de kenmerken voldoen aan het filter worden doorgestuurd naar de afnemer van het ABONNEMENT.",
+            "additionalProperties": {
+              "type": "string",
+              "description": "Een waarde behorende bij de sleutel."
+            }
+          }
+        }
+      }
+    }
+  }
+}

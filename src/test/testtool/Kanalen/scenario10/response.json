@@ -1,0 +1,8 @@
+{
+  "type": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/403 403 Forbidden",
+  "code": "permission_denied",
+  "title": "You do not have permission to perform this action.",
+  "status": 403,
+  "detail": "You do not have permission to perform this action.",
+  "instance": "kanaal"
+}

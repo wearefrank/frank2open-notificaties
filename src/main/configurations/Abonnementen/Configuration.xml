@@ -1,0 +1,8 @@
+﻿<Configuration name="Abonnementen">
+    <Include ref="ListAbonnement.xml"/>
+    <Include ref="CreateAbonnement.xml"/>
+    <Include ref="ReadAbonnement.xml"/>
+    <Include ref="UpdateAbonnement.xml"/>
+    <Include ref="PartialUpdateAbonnement.xml"/>
+    <Include ref="DeleteAbonnement.xml"/>
+</Configuration>

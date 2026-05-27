@@ -1,0 +1,4 @@
+﻿{
+  "auth": "Bearer test-token",
+  "kanalen": [{"naam": "test-kanaal"}]
+}

@@ -1,0 +1,36 @@
+info:
+  name: Update
+  type: http
+  seq: 4
+
+http:
+  method: PUT
+  url: "{{ROOT_URI}}/api/{{API_VERSION}}/abonnement/{{abonnement_uuid}}"
+  body:
+    type: json
+    data: |-
+      {
+        "callbackUrl": "{{WEBHOOK_URL}}",
+        "auth": "Bearer test-token-runner-updated",
+        "kanalen": [
+          {
+            "naam": "{{kanaal_naam}}",
+            "filters": {
+              "bronorganisatie": "000000001"
+            }
+          }
+        ]
+      }
+  auth: inherit
+
+runtime:
+  assertions:
+    - expression: res.status
+      operator: eq
+      value: "200"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

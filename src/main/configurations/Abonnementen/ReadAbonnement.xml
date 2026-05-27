@@ -1,0 +1,93 @@
+<Module
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="../FrankConfig.xsd"
+>
+    <Adapter name="readAbonnementAdapter">
+        <Receiver name="readAbonnementReceiver">
+            <ApiListener
+                    name="readAbonnementListener"
+                    uriPattern="v1/abonnement/{uuid}"
+                    method="GET"
+                    headerParams="Authorization"
+                    allowAllParams="false"
+                    produces="JSON"/>
+        </Receiver>
+        <Pipeline>
+            <Exits>
+                <Exit name="OK" state="SUCCESS" code="200"/>
+                <Exit name="BadRequest" state="ERROR" code="400"/>
+                <Exit name="Unauthorized" state="ERROR" code="401"/>
+                <Exit name="Forbidden" state="ERROR" code="403"/>
+                <Exit name="NotFound" state="ERROR" code="404"/>
+                <Exit name="NotAcceptable" state="ERROR" code="406"/>
+                <Exit name="Conflict" state="ERROR" code="409"/>
+                <Exit name="Gone" state="ERROR" code="410"/>
+                <Exit name="PreconditionFailed" state="ERROR" code="412"/>
+                <Exit name="UnsupportedMediaType" state="ERROR" code="415"/>
+                <Exit name="TooManyRequests" state="ERROR" code="429"/>
+                <Exit name="InternalServerError" state="ERROR" code="500"/>
+            </Exits>
+
+            <PutInSessionPipe name="setInstance" value="abonnement" sessionKey="responseInstance">
+                <Forward name="success" path="checkAuth"/>
+            </PutInSessionPipe>
+
+            <SenderPipe name="checkAuth">
+                <FrankSender target="Auth/authCheck"/>
+                <Param name="authorization"
+                       sessionKey="headers"
+                       xpathExpression="headers/header[@name='Authorization']"/>
+                <Param name="requiredScopes" value='["notificaties.publiceren", "notifcaties.consumeren"]'/>
+            </SenderPipe>
+
+            <SwitchPipe name="authResult">
+                <Forward name="200" path="readAbonnementSender"/>
+                <Forward name="401" path="unauthorizedError"/>
+                <Forward name="403" path="forbiddenError"/>
+                <Forward name="500" path="exception"/>
+            </SwitchPipe>
+
+            <Include ref="CommonResponses.xml"/>
+
+            <SenderPipe name="readAbonnementSender">
+                <FixedQuerySender
+                        name="readAbonnementQuerySender"
+                        queryType="SELECT"
+                        query='
+                            SELECT
+                                abonnement.uuid,
+                                abonnement.callback_url,
+                                abonnement.auth,
+                                fg.id AS filter_group_id,
+                                kanaal.naam AS kanaal_naam,
+                                f.filter_key AS filter_key,
+                                f.filter_value AS filter_value
+                            FROM abonnement
+                            LEFT JOIN filter_group AS fg
+                            ON fg.abonnement_id = abonnement.id
+                            LEFT JOIN kanaal
+                            ON fg.kanaal_id = kanaal.id
+                            LEFT JOIN filter AS f
+                            ON f.filter_group_id = fg.id
+                            WHERE abonnement.uuid = ?
+                        '
+                        outputFormat="JSON"/>
+                <Param name="uuid" sessionKey="uuid"/>
+            </SenderPipe>
+
+            <IfPipe name="abonnementExistsCheck"
+                    expressionValue="0"
+                    jsonPathExpression="$.rowset.length()">
+                <Forward name="then" path="notFoundError"/>
+                <Forward name="else" path="readAbonnementMap"/>
+            </IfPipe>
+
+            <DataSonnetPipe
+                    name="readAbonnementMap"
+                    styleSheetName="ds/abonnement-read.ds">
+                <Param name="baseUrl" value="${nc.api.base-url}/abonnement/"/>
+                <Forward name="success" path="OK"/>
+            </DataSonnetPipe>
+        </Pipeline>
+    </Adapter>
+</Module>

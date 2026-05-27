@@ -1,0 +1,8 @@
+{
+  "type": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/409 409 Conflict",
+  "code": "unique",
+  "title": "Naam is not unique.",
+  "status": 409,
+  "detail": "A kanaal with this naam already exists.",
+  "instance": "kanaal"
+}
