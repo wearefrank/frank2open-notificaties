@@ -1,7 +1,7 @@
 name: Notificatie Component
 variables:
   - name: ROOT_URI
-    value: https://localhost
+    value: http://localhost:8080
   - name: API_VERSION
     value: v1
   - name: JWT_TOKEN

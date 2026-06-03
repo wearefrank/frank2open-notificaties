@@ -45,7 +45,7 @@
       "type": "object",
       "description": "Mapping van extra kenmerken (sleutel/waarde paren).",
       "additionalProperties": {
-        "type": "string",
+        "type": ["string", "number", "null"],
         "maxLength": 1000,
         "description": "Een waarde behorende bij de sleutel."
       }

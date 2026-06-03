@@ -1,0 +1,28 @@
+[
+    {
+        "model": "klantinteracties.klantcontact",
+        "pk": 1,
+        "fields": {
+            "uuid": "e8442b0c-756d-44df-a61a-fbfd2b3504c4",
+            "kanaal": "email",
+            "onderwerp": "Demo klantcontact",
+            "taal": "nld",
+            "vertrouwelijk": false,
+            "plaatsgevonden_op": "2026-01-01T12:00:00Z"
+        }
+    },
+    {
+        "model": "klantinteracties.actor",
+        "pk": 1,
+        "fields": {
+            "uuid": "fe824e27-e5b1-42e6-92c7-db4565a360f9",
+            "naam": "Demo Actor",
+            "soort_actor": "geautomatiseerde_actor",
+            "indicatie_actief": true,
+            "actoridentificator_object_id": "",
+            "actoridentificator_code_objecttype": "",
+            "actoridentificator_code_register": "",
+            "actoridentificator_code_soort_object_id": ""
+        }
+    }
+]
