@@ -13,10 +13,10 @@ services:
     ports:
       - "${PORT:-8080}:8080"
     depends_on:
-      db:
+      db-frank:
         condition: service_healthy
 
-  db:
+  db-frank:
     image: postgres:15
     environment:
       POSTGRES_DB: notificaties
