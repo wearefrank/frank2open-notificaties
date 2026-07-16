@@ -1,0 +1,5 @@
+{
+  "naam": "test-kanaal",
+  "documentatieLink": "http://example.com/other",
+  "filters": []
+}

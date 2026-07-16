@@ -1,0 +1,31 @@
+local kenmerken = if std.objectHas(notification, "kenmerken") then notification.kenmerken else {};
+local rows = if payload.rowset == null then [] else payload.rowset;
+
+// Single pass: group rows by abonnement ID, collecting filter entries per subscriber
+local grouped = std.foldl(
+    function(acc, row)
+        local key = std.toString(row.ID);
+        local fEntry = if row.FILTER_KEY != null then [{ key: row.FILTER_KEY, value: row.FILTER_VALUE }] else [];
+        if std.objectHas(acc, key)
+        then acc + { [key]: acc[key] + { filters: acc[key].filters + fEntry } }
+        else acc + { [key]: { id: row.ID, uuid: row.UUID, callbackUrl: row.CALLBACK_URL, auth: row.AUTH, filters: fEntry } },
+    rows,
+    {}
+);
+
+// For each subscriber: check all filters, then include in output if all pass
+local result = std.foldl(
+    function(acc, id)
+        local abon = grouped[id];
+        local ok = std.foldl(
+            function(pass, f)
+                pass && (if std.objectHas(kenmerken, f.key) then f.value == "*" || f.value == kenmerken[f.key] else true),
+            abon.filters,
+            true
+        );
+        if ok then acc + [{ ID: abon.id, UUID: abon.uuid, CALLBACK_URL: abon.callbackUrl, AUTH: abon.auth }] else acc,
+    std.objectFields(grouped),
+    []
+);
+
+{ row: result }

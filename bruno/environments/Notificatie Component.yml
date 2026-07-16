@@ -1,0 +1,12 @@
+name: Notificatie Component
+variables:
+  - name: ROOT_URI
+    value: http://localhost:8080
+  - name: API_VERSION
+    value: v1
+  - name: JWT_TOKEN
+    value: "{{process.env.JWT_TOKEN}}"
+  - name: WEBHOOK_URL
+    value: https://webhook.site/35049649-6bb4-45a8-a647-43462ededb37
+  - name: kanaal_naam
+    value: test-kanaal-0

@@ -1,0 +1,14 @@
+info:
+  name: Notificatie Component
+  type: folder
+  seq: 3
+
+request:
+  auth: inherit
+
+docs:
+  content: |-
+    [https://github.com/RikIsFrank/Notificatie-Component](https://github.com/RikIsFrank/Notificatie-Component)
+
+    WeAreFrank! Notificatie Component voor de Gemeentemarkt
+  type: text/markdown

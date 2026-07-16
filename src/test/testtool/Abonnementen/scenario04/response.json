@@ -1,0 +1,8 @@
+﻿{
+  "type": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/404 404 Not Found",
+  "code": "not_found",
+  "title": "Not found.",
+  "status": 404,
+  "detail": "No abonnement with uuid found.",
+  "instance": "abonnement"
+}

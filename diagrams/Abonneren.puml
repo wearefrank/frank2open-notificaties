@@ -1,0 +1,27 @@
+﻿@startuml
+autonumber
+title Abonneren Sequence
+
+actor Gebruiker
+
+box "Notificatie Component" #LightGray
+participant WAFAPI as "Abonnement API endpoint"
+participant WAFConfig as "Frank Configuratie pipeline"
+database WAFDB as "Database (abonnementen table)"
+end box
+
+Gebruiker -> WAFAPI : Verzoek abonnement aanmaken
+activate WAFAPI
+
+WAFAPI -> WAFConfig : Valideer abonnement gegevens
+activate WAFConfig
+
+WAFConfig -> WAFDB : Sla abonnement op
+
+WAFConfig --> WAFAPI : Abonnement succesvol opgeslagen
+deactivate WAFConfig
+
+WAFAPI --> Gebruiker : Abonnement aangemaakt
+deactivate WAFAPI
+
+@enduml

@@ -1,0 +1,174 @@
+version: '3.4'
+
+services:
+  db:
+    image: postgis/postgis:17-3.5
+    environment:
+      - POSTGRES_HOST_AUTH_METHOD=trust
+    volumes:
+      - ./docker/open-zaak/postgres.entrypoint-initdb.d/0001-openzaak.sql:/docker-entrypoint-initdb.d/0001-openzaak.sql:ro
+      - ./docker/open-zaak/postgres.entrypoint-initdb.d/0002-openzaak-extensions.sh:/docker-entrypoint-initdb.d/0002-openzaak-extensions.sh:ro
+      - ./docker/open-klant/postgres.entrypoint-initdb.d/0001-openklant.sql:/docker-entrypoint-initdb.d/0003-openklant.sql:ro
+      - db:/var/lib/postgresql/data
+    command: postgres -c max_connections=300 -c log_min_messages=LOG
+    networks:
+      - open-zaak-dev
+
+  rabbitmq:
+    image: rabbitmq:4.0-alpine
+    volumes:
+      - ./docker/open-zaak/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+    networks:
+      - open-zaak-dev
+
+  redis:
+    image: redis
+    networks:
+      - open-zaak-dev
+
+  openzaak:
+    image: openzaak/open-zaak:latest
+    environment: &openzaak-env
+      DJANGO_SETTINGS_MODULE: openzaak.conf.docker
+      SECRET_KEY: ${SECRET_KEY:-7(h1r2hk)8z9+05edulo_3qzymwbo&c24=)qz7+_@3&2sp=u%i}
+      DB_NAME: openzaak
+      DB_USER: openzaak
+      IS_HTTPS: "no"
+      ALLOWED_HOSTS: localhost,127.0.0.1,web,web.local,openzaak,host.docker.internal
+      CORS_ALLOW_ALL_ORIGINS: "True"
+      CSRF_TRUSTED_ORIGINS: http://localhost:9000
+      CACHE_DEFAULT: redis:6379/0
+      CACHE_AXES: redis:6379/0
+      SUBPATH: ${SUBPATH:-/}
+      IMPORT_DOCUMENTEN_BASE_DIR: ${IMPORT_DOCUMENTEN_BASE_DIR:-/app/import-data}
+      IMPORT_DOCUMENTEN_BATCH_SIZE: ${IMPORT_DOCUMENTEN_BATCH_SIZE:-500}
+      OPENZAAK_SUPERUSER_USERNAME: admin
+      DJANGO_SUPERUSER_PASSWORD: admin
+      OPENZAAK_SUPERUSER_EMAIL: admin@localhost
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+      CELERY_LOGLEVEL: DEBUG
+      CELERY_WORKER_CONCURRENCY: ${CELERY_WORKER_CONCURRENCY:-4}
+      ENVIRONMENT: dev
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      DISABLE_2FA: ${DISABLE_2FA:-yes}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; exit(requests.head('http://localhost:8000/admin/').status_code not in [200, 302])"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      # This should allow for enough time for migrations to run before the max
+      # retries have passed. This healthcheck in turn allows other containers
+      # to wait for the database migrations.
+      start_period: 30s
+    volumes:
+      - ./docker/open-zaak/fixtures/catalogi.json:/app/fixtures/catalogi.json
+    depends_on:
+      openzaak-init:
+        condition: service_completed_successfully
+    ports:
+      - 8001:8000
+    networks:
+      - open-zaak-dev
+
+  openzaak-init:
+    image: openzaak/open-zaak:latest
+    command: /setup_configuration.sh
+    environment:
+      <<: *openzaak-env
+      RUN_SETUP_CONFIG: "true"
+    volumes:
+      - ./docker/open-zaak/setup_configuration:/app/setup_configuration
+    depends_on:
+      - db
+      - redis
+    networks:
+      - open-zaak-dev
+
+  openzaak_celery:
+    image: openzaak/open-zaak:latest
+    environment: *openzaak-env
+    command: /celery_worker.sh
+    healthcheck:
+      test: ["CMD", "python", "/app/bin/check_celery_worker_liveness.py"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    depends_on:
+      openzaak:
+        condition: service_healthy
+    networks:
+      - open-zaak-dev
+
+  openklant:
+    image: maykinmedia/open-klant:latest
+    environment: &openklant-env
+      DJANGO_SETTINGS_MODULE: openklant.conf.docker
+      SECRET_KEY: ${OPENKLANT_SECRET_KEY:-django-insecure-openklant-dev-key}
+      DB_NAME: openklant
+      DB_USER: openklant
+      DB_HOST: db
+      IS_HTTPS: "no"
+      ALLOWED_HOSTS: localhost,127.0.0.1,openklant,host.docker.internal
+      CORS_ALLOW_ALL_ORIGINS: "True"
+      CSRF_TRUSTED_ORIGINS: http://localhost:8002
+      CACHE_DEFAULT: redis:6379/2
+      CACHE_AXES: redis:6379/2
+      CELERY_BROKER_URL: redis://redis:6379/3
+      CELERY_RESULT_BACKEND: redis://redis:6379/3
+      CELERY_WORKER_NAME: celery@openklant
+      SITE_DOMAIN: localhost
+      NOTIFICATIONS_DISABLED: "false"
+      LOG_NOTIFICATIONS_IN_DB: "yes"
+      DISABLE_2FA: "true"
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      OTEL_SDK_DISABLED: "true"
+      DJANGO_SUPERUSER_USERNAME: admin
+      DJANGO_SUPERUSER_EMAIL: admin@admin.admin
+      DJANGO_SUPERUSER_PASSWORD: admin
+    healthcheck:
+      test: ["CMD", "maykin-common", "health-check"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    depends_on:
+      openklant-init:
+        condition: service_completed_successfully
+    ports:
+      - 8002:8000
+    networks:
+      - open-zaak-dev
+
+  openklant-init:
+    image: maykinmedia/open-klant:latest
+    command: sh -c "/upgrade_check_version.sh && /setup_configuration.sh && (src/manage.py createsuperuser --noinput || true) && src/manage.py loaddata /app/fixtures/demo.json"
+    environment:
+      <<: *openklant-env
+      RUN_SETUP_CONFIG: "true"
+    volumes:
+      - ./docker/open-klant/setup_configuration:/app/setup_configuration
+      - ./docker/open-klant/fixtures/demo.json:/app/fixtures/demo.json:ro
+    depends_on:
+      - db
+      - redis
+    networks:
+      - open-zaak-dev
+
+  openklant_celery:
+    image: maykinmedia/open-klant:latest
+    environment: *openklant-env
+    command: /celery_worker.sh
+    depends_on:
+      openklant:
+        condition: service_healthy
+    networks:
+      - open-zaak-dev
+
+volumes:
+  db:
+
+networks:
+  open-zaak-dev:
+    name: open-zaak-dev

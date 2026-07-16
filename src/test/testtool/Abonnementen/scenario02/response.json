@@ -1,0 +1,11 @@
+﻿[{
+  "url": "http://localhost:8080/api/v1/abonnement/test-abonnement-uuid-001",
+  "auth": "Bearer test-token",
+  "callbackUrl": "http://example.com/webhook",
+  "kanalen": [
+    {
+      "filters": {},
+      "naam": "test-kanaal"
+    }
+  ]
+}]

@@ -1,0 +1,30 @@
+tokenauth_config_enable: true
+tokenauth:
+  items:
+    - identifier: notificatie-component-demo
+      token: a0f0289867093781be61c4962c7314ebe9da6a09
+      contact_person: Demo
+      email: demo@example.com
+      organization: Demo
+      application: Notificatie Component demo
+      administration: ""
+
+zgw_consumers_config_enable: true
+zgw_consumers:
+  services:
+    - identifier: notificatie-component
+      label: Notificatie Component
+      api_root: http://host.docker.internal:8080/api/v1/
+      api_type: nrc
+      auth_type: zgw
+      client_id: open-klant
+      user_id: open-klant
+      secret: open-klant-secret
+      user_representation: Open Klant
+
+notifications_config_enable: true
+notifications_config:
+  notifications_api_service_identifier: notificatie-component
+  notification_delivery_max_retries: 1
+  notification_delivery_retry_backoff: 2
+  notification_delivery_retry_backoff_max: 3

@@ -1,0 +1,59 @@
+sites_config_enable: true
+sites_config:
+  items:
+    - domain: openzaak:8000
+      name: Open Zaak
+
+zgw_consumers_config_enable: true
+zgw_consumers:
+  services:
+    - identifier: notificatie-component
+      label: Notificatie Component
+#      api_root: http://notificatie-component:8000/api/v1/
+      api_root: http://host.docker.internal:8080/api/v1/
+#      api_connection_check_path: notificaties
+      api_type: nrc
+      auth_type: zgw
+      client_id: open-zaak
+      secret: G2LIVfXal1J93puQkV3O
+      user_id: open-zaak
+      user_representation: Open Zaak
+
+notifications_config_enable: true
+notifications_config:
+  notifications_api_service_identifier: notificatie-component
+  notification_delivery_max_retries: 1
+  notification_delivery_retry_backoff: 2
+  notification_delivery_retry_backoff_max: 3
+
+vng_api_common_credentials_config_enable: true
+vng_api_common_credentials:
+  items:
+    - identifier: open-zaak
+      secret: G2LIVfXal1J93puQkV3O
+    - identifier: admin
+      secret: admin
+    - identifier: notificatie-component
+      secret: super-secret
+    - identifier: open-klant
+      secret: open-klant-secret
+
+vng_api_common_applicaties_config_enable: true
+vng_api_common_applicaties:
+  items:
+    - uuid: 78591bab-9a00-4887-849c-53b21a67782f
+      client_ids:
+        - open-zaak
+        - admin
+      label: Open Zaak applicatie
+      heeft_alle_autorisaties: true
+    - uuid: 10878ada-c751-4c21-b082-2dd746db7097
+      client_ids:
+        - notificatie-component
+      label: Notificatie Component
+      heeft_alle_autorisaties: true
+    - uuid: 5e36b3c0-0002-0000-0000-000000000001
+      client_ids:
+        - open-klant
+      label: Open Klant
+      heeft_alle_autorisaties: true

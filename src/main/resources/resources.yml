@@ -1,0 +1,11 @@
+jdbc:
+  - name: "notificatiecomponent"
+    type: "org.h2.jdbcx.JdbcDataSource"
+    url: "jdbc:h2:./data/notificaties"
+    factory: "org.apache.naming.factory.BeanFactory"
+
+  - name: "notificatiecomponent-postgresql"
+    type: "org.postgresql.ds.PGSimpleDataSource"
+    url: "jdbc:postgresql://${postgresql.host:-localhost}:${postgresql.port:-5432}/notificaties"
+    username: "${postgresql.username:-frank}"
+    password: "${postgresql.password:-frank}"

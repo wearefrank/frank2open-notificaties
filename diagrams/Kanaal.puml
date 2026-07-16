@@ -1,0 +1,35 @@
+﻿@startuml
+autonumber
+title Kanaal aanmaken Sequence
+
+actor Beheerder
+
+box "Notificatie Component" #LightGray
+participant WAFAPI as "Kanaal API endpoint"
+participant WAFConfig as "Frank Configuratie pipeline"
+database WAFDB as "Database (kanalen table)"
+end box
+
+Beheerder -> WAFAPI : Verzoek kanaal aanmaken
+activate WAFAPI
+
+WAFAPI -> WAFConfig : Valideer kanaal gegevens
+activate WAFConfig
+
+WAFConfig -> WAFDB : Controleer of kanaal al bestaat
+WAFDB --> WAFConfig : Resultaat
+
+alt Kanaal bestaat niet
+    WAFConfig -> WAFDB : Sla nieuw kanaal op
+    WAFDB --> WAFConfig : Opslag bevestigd
+    WAFConfig --> WAFAPI : Kanaal succesvol aangemaakt
+else Kanaal bestaat al
+    WAFConfig --> WAFAPI : Kanaal bestaat al
+end
+
+deactivate WAFConfig
+
+WAFAPI --> Beheerder : HTTP response
+deactivate WAFAPI
+
+@enduml

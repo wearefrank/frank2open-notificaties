@@ -1,0 +1,147 @@
+<Module
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="../FrankConfig.xsd"
+>
+    <!-- Test fixture: clears all abonnement + kanaal data, then inserts one known
+         abonnement (test-abonnement-uuid-001) subscribed to test-kanaal with no filters.
+         Used by Larva scenarios that need predictable read/list responses. -->
+    <Adapter name="setupAbonnementTest">
+        <Receiver name="setupAbonnementTestReceiver">
+            <FrankListener/>
+        </Receiver>
+        <Pipeline>
+            <Exits>
+                <Exit name="OK" state="SUCCESS"/>
+            </Exits>
+
+            <SenderPipe name="deleteAllAbonnementRows">
+                <FixedQuerySender queryType="OTHER" query="DELETE FROM abonnement"/>
+                <Forward name="success" path="deleteAllKanaalRows"/>
+            </SenderPipe>
+
+            <SenderPipe name="deleteAllKanaalRows">
+                <FixedQuerySender queryType="OTHER" query="DELETE FROM kanaal"/>
+                <Forward name="success" path="insertTestKanaal"/>
+            </SenderPipe>
+
+            <SenderPipe name="insertTestKanaal">
+                <FixedQuerySender
+                        queryType="OTHER"
+                        query="INSERT INTO kanaal (uuid, naam, documentatie_link, filters) VALUES (?, ?, ?, ?)"/>
+                <Param name="uuid"              value="test-kanaal-uuid-001"/>
+                <Param name="naam"              value="test-kanaal"/>
+                <Param name="documentatie_link" value="http://example.com/docs/test-kanaal"/>
+                <Param name="filters"           value='["zaaktype","bronorganisatie"]'/>
+                <Forward name="success" path="insertTestAbonnement"/>
+            </SenderPipe>
+
+            <SenderPipe name="insertTestAbonnement">
+                <FixedQuerySender
+                        queryType="OTHER"
+                        query="INSERT INTO abonnement (uuid, callback_url, auth) VALUES (?, ?, ?)"/>
+                <Param name="uuid"         value="test-abonnement-uuid-001"/>
+                <Param name="callback_url" value="http://example.com/webhook"/>
+                <Param name="auth"         value="Bearer test-token"/>
+                <Forward name="success" path="insertTestFilterGroup"/>
+            </SenderPipe>
+
+            <SenderPipe name="insertTestFilterGroup">
+                <FixedQuerySender
+                        queryType="OTHER"
+                        query="INSERT INTO filter_group (abonnement_id, kanaal_id)
+                               SELECT a.id, k.id FROM abonnement a, kanaal k
+                               WHERE a.uuid = ? AND k.uuid = ?"/>
+                <Param name="abonnement_uuid" value="test-abonnement-uuid-001"/>
+                <Param name="kanaal_uuid"     value="test-kanaal-uuid-001"/>
+                <Forward name="success" path="OK"/>
+            </SenderPipe>
+        </Pipeline>
+    </Adapter>
+
+    <!-- Test fixture: same as setupAbonnementTest but adds a bronorganisatie filter
+         (value "000000001") on the test abonnement. Used for filter-matching Larva scenarios. -->
+    <Adapter name="setupAbonnementWithFilterTest">
+        <Receiver name="setupAbonnementWithFilterTestReceiver">
+            <FrankListener/>
+        </Receiver>
+        <Pipeline>
+            <Exits>
+                <Exit name="OK" state="SUCCESS"/>
+            </Exits>
+
+            <SenderPipe name="deleteAllAbonnementRows">
+                <FixedQuerySender queryType="OTHER" query="DELETE FROM abonnement"/>
+                <Forward name="success" path="deleteAllKanaalRows"/>
+            </SenderPipe>
+
+            <SenderPipe name="deleteAllKanaalRows">
+                <FixedQuerySender queryType="OTHER" query="DELETE FROM kanaal"/>
+                <Forward name="success" path="insertTestKanaal"/>
+            </SenderPipe>
+
+            <SenderPipe name="insertTestKanaal">
+                <FixedQuerySender
+                        queryType="OTHER"
+                        query="INSERT INTO kanaal (uuid, naam, documentatie_link, filters) VALUES (?, ?, ?, ?)"/>
+                <Param name="uuid"              value="test-kanaal-uuid-001"/>
+                <Param name="naam"              value="test-kanaal"/>
+                <Param name="documentatie_link" value="http://example.com/docs/test-kanaal"/>
+                <Param name="filters"           value='["zaaktype","bronorganisatie"]'/>
+                <Forward name="success" path="insertTestAbonnement"/>
+            </SenderPipe>
+
+            <SenderPipe name="insertTestAbonnement">
+                <FixedQuerySender
+                        queryType="OTHER"
+                        query="INSERT INTO abonnement (uuid, callback_url, auth) VALUES (?, ?, ?)"/>
+                <Param name="uuid"         value="test-abonnement-uuid-001"/>
+                <Param name="callback_url" value="http://example.com/webhook"/>
+                <Param name="auth"         value="Bearer test-token"/>
+                <Forward name="success" path="insertTestFilterGroup"/>
+            </SenderPipe>
+
+            <SenderPipe name="insertTestFilterGroup">
+                <FixedQuerySender
+                        queryType="OTHER"
+                        query="INSERT INTO filter_group (abonnement_id, kanaal_id)
+                               SELECT a.id, k.id FROM abonnement a, kanaal k
+                               WHERE a.uuid = ? AND k.uuid = ?"/>
+                <Param name="abonnement_uuid" value="test-abonnement-uuid-001"/>
+                <Param name="kanaal_uuid"     value="test-kanaal-uuid-001"/>
+                <Forward name="success" path="insertBronorganisatieFilter"/>
+            </SenderPipe>
+
+            <SenderPipe name="insertBronorganisatieFilter">
+                <FixedQuerySender
+                        queryType="OTHER"
+                        query="INSERT INTO filter (filter_group_id, filter_key, filter_value)
+                               SELECT fg.id, ?, ?
+                               FROM filter_group fg
+                               INNER JOIN abonnement a ON fg.abonnement_id = a.id
+                               WHERE a.uuid = ?"/>
+                <Param name="filter_key"       value="bronorganisatie"/>
+                <Param name="filter_value"     value="000000001"/>
+                <Param name="abonnement_uuid"  value="test-abonnement-uuid-001"/>
+                <Forward name="success" path="OK"/>
+            </SenderPipe>
+        </Pipeline>
+    </Adapter>
+
+    <!-- Test fixture: deletes all abonnement rows (cascades to filter_group, filter,
+         notificatie_response). Leaves kanaal table unchanged. -->
+    <Adapter name="deleteAllAbonnement">
+        <Receiver name="deleteAllAbonnementReceiver">
+            <FrankListener/>
+        </Receiver>
+        <Pipeline>
+            <Exits>
+                <Exit name="OK" state="SUCCESS"/>
+            </Exits>
+
+            <SenderPipe name="deleteAllAbonnementRows">
+                <FixedQuerySender queryType="OTHER" query="DELETE FROM abonnement"/>
+                <Forward name="success" path="OK"/>
+            </SenderPipe>
+        </Pipeline>
+    </Adapter>
+</Module>

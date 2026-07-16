@@ -1,0 +1,38 @@
+﻿version: "3.8"
+
+services:
+  frank:
+    build: .
+    environment:
+      TZ: Europe/Amsterdam
+      dtap.stage: LOC
+    env_file:
+      - .env
+    volumes:
+      - logs:/usr/local/tomcat/logs
+    ports:
+      - "${PORT:-8080}:8080"
+    depends_on:
+      db-frank:
+        condition: service_healthy
+
+  db-frank:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: notificaties
+      POSTGRES_USER: frank
+      POSTGRES_PASSWORD: frank
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U frank -d notificaties" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+
+volumes:
+  logs:
+  pgdata:

@@ -1,0 +1,5 @@
+﻿<Configuration name="Kanalen">
+    <Include ref="ListKanaal.xml"/>
+    <Include ref="CreateKanaal.xml"/>
+    <Include ref="ReadKanaal.xml"/>
+</Configuration>

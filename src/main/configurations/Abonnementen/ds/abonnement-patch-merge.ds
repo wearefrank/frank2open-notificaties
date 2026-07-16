@@ -1,0 +1,33 @@
+﻿local patch = payload.originalMessage;
+local existingRows = payload.existingAbonnement;
+
+local firstRow = existingRows[0];
+local fgIds = std.uniq(std.map(function(r) r.ID, existingRows));
+
+local existingKanalen = std.map(function(fgId)
+    local fgRows = std.filter(function(r) r.ID == fgId, existingRows);
+    local firstFgRow = fgRows[0];
+    local filterRows = std.filter(function(r) r.FILTER_KEY != null, fgRows);
+    local filters = std.foldl(
+        function(acc, r) acc {[r.FILTER_KEY]: r.FILTER_VALUE},
+        filterRows,
+        {}
+    );
+    { naam: firstFgRow.NAAM, filters: filters },
+    fgIds
+);
+
+{
+    callbackUrl:
+        if std.objectHas(patch, 'callbackUrl')
+        then patch.callbackUrl
+        else firstRow.CALLBACK_URL,
+    auth:
+    if std.objectHas(patch, 'auth')
+    then patch.auth
+    else firstRow.AUTH,
+    kanalen:
+        if std.objectHas(patch, 'kanalen')
+        then patch.kanalen
+        else existingKanalen,
+}

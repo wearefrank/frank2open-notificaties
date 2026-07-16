@@ -1,0 +1,35 @@
+info:
+  name: Create
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{ROOT_URI}}/api/{{API_VERSION}}/notificaties"
+  body:
+    type: json
+    data: |-
+      {
+        "kanaal": "{{kanaal_naam}}",
+        "hoofdObject": "http://example.com/zaak/1",
+        "resource": "zaak",
+        "resourceUrl": "http://example.com/zaak/1",
+        "actie": "create",
+        "aanmaakdatum": "2019-08-24T14:15:22Z",
+        "kenmerken": {
+          "bronorganisatie": "000000001"
+        }
+      }
+  auth: inherit
+
+runtime:
+  assertions:
+    - expression: res.status
+      operator: eq
+      value: "201"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

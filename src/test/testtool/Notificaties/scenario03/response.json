@@ -1,0 +1,15 @@
+﻿{
+  "type": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/400 400 Bad Request",
+  "code": "invalid",
+  "title": "Invalid input.",
+  "status": 400,
+  "detail": "Invalid input.",
+  "instance": "notificatie",
+  "invalidParams": [
+    {
+      "name": "hoofdObject",
+      "code": "required",
+      "reason": "This field is required."
+    }
+  ]
+}
